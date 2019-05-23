@@ -1,29 +1,19 @@
-const fs = require('fs-extra');
-const debug = require('debug')('loki:chrome');
-const presets = require('./presets.json');
-const disableAnimations = require('./disable-animations');
-const getSelectorBoxSize = require('./get-selector-box-size');
-const getStories = require('./get-stories');
-const awaitLokiReady = require('./await-loki-ready');
-const addLokiSessionMarker = require('./add-loki-session-marker');
-const {
-  withTimeout,
-  TimeoutError,
-  withRetries,
-} = require('../../failure-handling');
-const { FetchingURLsError, ServerError } = require('../../errors');
+const fs = require("fs-extra");
+const debug = require("debug")("loki:chrome");
+const presets = require("./presets.json");
+const disableAnimations = require("./disable-animations");
+const getSelectorBoxSize = require("./get-selector-box-size");
+const getStories = require("./get-stories");
+const awaitLokiReady = require("./await-loki-ready");
+const addLokiSessionMarker = require("./add-loki-session-marker");
+const { withTimeout, TimeoutError, withRetries } = require("../../failure-handling");
+const { FetchingURLsError, ServerError } = require("../../errors");
 
 const LOADING_STORIES_TIMEOUT = 60000;
 const CAPTURING_SCREENSHOT_TIMEOUT = 30000;
 const REQUEST_STABILIZATION_TIMEOUT = 100;
 
-function createChromeTarget(
-  start,
-  stop,
-  createNewDebuggerInstance,
-  baseUrl,
-  prepare
-) {
+function createChromeTarget(start, stop, createNewDebuggerInstance, baseUrl, prepare) {
   function getDeviceMetrics(options) {
     return {
       width: options.width,
@@ -73,10 +63,7 @@ function createChromeTarget(
               if (stabilizationTimer) {
                 clearTimeout(stabilizationTimer);
               }
-              stabilizationTimer = setTimeout(
-                resolve,
-                REQUEST_STABILIZATION_TIMEOUT
-              );
+              stabilizationTimer = setTimeout(resolve, REQUEST_STABILIZATION_TIMEOUT);
             }
           }
         };
@@ -124,18 +111,14 @@ function createChromeTarget(
     };
 
     const executeFunctionWithWindow = async (functionToExecute, ...args) => {
-      const stringifiedArgs = ['window']
-        .concat(args.map(JSON.stringify))
-        .join(',');
+      const stringifiedArgs = ["window"].concat(args.map(JSON.stringify)).join(",");
       const expression = `(() => Promise.resolve((${functionToExecute})(${stringifiedArgs})).then(JSON.stringify))()`;
       const { result } = await Runtime.evaluate({
         expression,
         awaitPromise: true,
       });
-      if (result.subtype === 'error') {
-        throw new Error(
-          result.description.replace(/^Error: /, '').split('\n')[0]
-        );
+      if (result.subtype === "error") {
+        throw new Error(result.description.replace(/^Error: /, "").split("\n")[0]);
       }
       return result.value && JSON.parse(result.value);
     };
@@ -144,14 +127,14 @@ function createChromeTarget(
 
     client.loadUrl = async url => {
       if (!options.chromeEnableAnimations) {
-        debug('Disabling animations');
+        debug("Disabling animations");
         await evaluateOnNewDocument(disableAnimations.asString);
       }
 
       debug(`Navigating to ${url}`);
       await Promise.all([Page.navigate({ url }), awaitRequestsFinished()]);
 
-      debug('Awaiting runtime setup');
+      debug("Awaiting runtime setup");
       await executeFunctionWithWindow(awaitLokiReady);
 
       await executeFunctionWithWindow(addLokiSessionMarker);
@@ -161,9 +144,9 @@ function createChromeTarget(
       try {
         return await executeFunctionWithWindow(getSelectorBoxSize, selector);
       } catch (error) {
-        if (error.message === 'Unable to find selector') {
+        if (error.message === "Unable to find selector") {
           throw new Error(
-            `Unable to get position of selector "${selector}". Review the \`chromeSelector\` option and make sure your story doesn't crash.`
+            `Unable to get position of selector "${selector}". Review the \`chromeSelector\` option and make sure your story doesn't crash.`,
           );
         }
         throw error;
@@ -171,28 +154,26 @@ function createChromeTarget(
     };
 
     client.captureScreenshot = withRetries(options.chromeRetries)(
-      withTimeout(CAPTURING_SCREENSHOT_TIMEOUT, 'captureScreenshot')(
-        async (selector = 'body') => {
-          debug(`Getting viewport position of "${selector}"`);
-          const position = await getPositionInViewport(selector);
+      withTimeout(CAPTURING_SCREENSHOT_TIMEOUT, "captureScreenshot")(async (selector = "body") => {
+        debug(`Getting viewport position of "${selector}"`);
+        const position = await getPositionInViewport(selector);
 
-          if (position.width === 0 || position.height === 0) {
-            throw new Error(
-              `Selector "${selector} has zero width or height. Can't capture screenshot.`
-            );
-          }
-
-          debug('Capturing screenshot');
-          const clip = Object.assign({ scale: 1 }, position);
-          const screenshot = await Page.captureScreenshot({
-            format: 'png',
-            clip,
-          });
-          const buffer = Buffer.from(screenshot.data, 'base64');
-
-          return buffer;
+        if (position.width === 0 || position.height === 0) {
+          throw new Error(
+            `Selector "${selector} has zero width or height. Can't capture screenshot.`,
+          );
         }
-      )
+
+        debug("Capturing screenshot");
+        const clip = Object.assign({ scale: 1 }, position);
+        const screenshot = await Page.captureScreenshot({
+          format: "png",
+          clip,
+        });
+        const buffer = Buffer.from(screenshot.data, "base64");
+
+        return buffer;
+      }),
     );
 
     return client;
@@ -200,7 +181,7 @@ function createChromeTarget(
 
   const getStoryUrl = (kind, story) =>
     `${baseUrl}/iframe.html?selectedKind=${encodeURIComponent(
-      kind
+      kind,
     )}&selectedStory=${encodeURIComponent(story)}`;
 
   async function getStorybook() {
@@ -219,8 +200,8 @@ function createChromeTarget(
         (error instanceof FetchingURLsError && error.failedURLs.includes(url))
       ) {
         throw new ServerError(
-          'Failed fetching stories because the server is down',
-          `Try starting it with "yarn storybook" or pass the --port or --host arguments if it's not running at ${baseUrl}`
+          "Failed fetching stories because the server is down",
+          `Try starting it with "yarn storybook" or pass the --port or --host arguments if it's not running at ${baseUrl}`,
         );
       }
       throw error;
@@ -228,17 +209,13 @@ function createChromeTarget(
     return tab.executeFunctionWithWindow(getStories);
   }
 
-  async function captureScreenshotForStory(
-    kind,
-    story,
-    outputPath,
-    options,
-    configuration
-  ) {
-    let tabOptions = Object.assign(
-      { media: options.chromeEmulatedMedia },
-      configuration
-    );
+  function sleep(ms) {
+    console.log("sleeping for" + ms);
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function captureScreenshotForStory(kind, story, outputPath, options, configuration) {
+    let tabOptions = Object.assign({ media: options.chromeEmulatedMedia }, configuration);
     if (configuration.preset) {
       if (!presets[configuration.preset]) {
         throw new Error(`Invalid preset ${configuration.preset}`);
@@ -252,6 +229,7 @@ function createChromeTarget(
     let screenshot;
     try {
       await withTimeout(options.chromeLoadTimeout)(tab.loadUrl(url));
+      await sleep(configuration.delay);
       screenshot = await tab.captureScreenshot(selector);
       await fs.outputFile(outputPath, screenshot);
     } catch (err) {
