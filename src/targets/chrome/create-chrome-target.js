@@ -210,7 +210,6 @@ function createChromeTarget(start, stop, createNewDebuggerInstance, baseUrl, pre
   }
 
   function sleep(ms) {
-    console.log("sleeping for" + ms);
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
