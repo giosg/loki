@@ -1,5 +1,9 @@
 <img src="https://user-images.githubusercontent.com/378279/27998811-43b9906e-6515-11e7-835a-6f596506cc46.png" width="300" height="130" alt="Loki" />
 
+# Changes made in this fork
+
+- Sleep function in `create-chrome-target.js`
+
 # Visual Regression Testing for Storybook
 
 [![GitHub license](https://img.shields.io/npm/l/loki.svg)](https://github.com/oblador/loki/blob/master/LICENSE) [![Travis](https://img.shields.io/travis/oblador/loki.svg)](https://travis-ci.org/oblador/loki) [![Node.js version](https://img.shields.io/node/v/loki.svg)](https://npmjs.com/package/loki) [![npm version](https://img.shields.io/npm/v/loki.svg)](https://npmjs.com/package/loki) [![npm downloads](https://img.shields.io/npm/dm/loki.svg)](https://npmjs.com/package/loki)
